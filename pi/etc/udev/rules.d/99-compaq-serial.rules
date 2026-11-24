@@ -1,0 +1,12 @@
+# The USB serial adapter cabled to the Compaq: give it the stable name
+# /dev/compaq, keep modem-probing software off it, and join it to the shared
+# session (compaq-serial.service) whenever it's plugged in. Any USB serial
+# adapter matches (FTDI, Prolific, CH340...). Once the Compaq's adapter has
+# arrived, pin this rule to it with ATTRS{serial}=="..." (from:
+# udevadm info -a /dev/ttyUSB0), so some other USB gadget can't take over.
+SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", SYMLINK+="compaq", ENV{ID_MM_DEVICE_IGNORE}="1", TAG+="systemd", ENV{SYSTEMD_WANTS}+="compaq-serial.service"
+# FTDI adapters hold arriving bytes for up to 16 thousandths of a second
+# before passing them on. With PILINK (the Compaq's fast picture program)
+# every screenful waits for the Compaq's "got it", and keys in a game
+# shouldn't lag: 1 thousandth instead.
+SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"

@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Teach PAL your face
+exec python3 /opt/compaq/pal/client.py enroll

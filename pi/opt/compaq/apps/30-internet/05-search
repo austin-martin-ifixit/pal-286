@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Web search (find pages; read them in Lynx, or see them in 1987)
+exec python3 /opt/compaq/lib/websearch.py "$@"

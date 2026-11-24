@@ -1,0 +1,29 @@
+# The shared Compaq session on the web, at http://compaq.local (port 80),
+# behind the office password. Runs as the limited "desk" account.
+[Unit]
+Description=Compaq on the web
+# Not network-online: it listens on every address, so it works as soon as
+# any network appears, including one that arrives after boot.
+After=network.target compaq-desk.service
+Wants=compaq-desk.service
+
+[Service]
+User=desk
+Group=desk
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+# Holds "viewers", the count of connected browsers shown in the Compaq menu.
+RuntimeDirectory=compaq-web
+RuntimeDirectoryMode=0755
+NoNewPrivileges=yes
+Environment=HOME=/home/desk LANG=C LC_ALL=C PATH=/usr/local/bin:/usr/bin:/bin
+# -I: ignore Python settings and packages in desk's home, where anyone at
+# the Linux command line could plant code (and catch the office password).
+# The key that signs sign-in cookies: opened by systemd and handed over, so
+# the desk account itself can't read the file (see load_key in server.py).
+OpenFile=/etc/compaq/web-cookie.key:cookie-key:read-only,graceful
+ExecStart=/usr/bin/python3 -I /opt/compaq/web/server.py --port 80
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

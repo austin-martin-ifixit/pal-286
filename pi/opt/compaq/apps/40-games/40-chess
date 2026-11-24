@@ -1,0 +1,14 @@
+#!/bin/bash
+# title: Chess (GNU Chess)
+. /opt/compaq/lib/common.sh
+intro "GNU Chess" \
+  "You play White (capital letters, at the bottom). Type a move as the square" \
+  "to move from, then the square to move to, like e2e4 (letters along the" \
+  "bottom, numbers up the side). Castle with e1g1. remove takes back your" \
+  "last move; quit ends the game." || exit 0
+clear
+# The board with coordinates, and a quick opponent (depth 2: it answers at
+# once). The settings go in first, then everything typed here follows.
+coproc MOVES { printf 'coords\ndepth 2\nshow board\n'; exec cat < /dev/tty; }
+gnuchess -q --easy <&"${MOVES[0]}"
+kill "$MOVES_PID" 2>/dev/null

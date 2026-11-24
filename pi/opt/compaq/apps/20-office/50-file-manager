@@ -1,0 +1,9 @@
+#!/bin/bash
+# title: File manager (Midnight Commander)
+. /opt/compaq/lib/common.sh
+intro "Midnight Commander file manager" \
+  "Arrows move, Tab switches sides, Enter opens a folder or file." \
+  "For the function keys, press Esc then a number: Esc 3 views a file," \
+  "Esc 5 copies, Esc 6 moves, Esc 8 deletes, Esc 0 quits." || exit 0
+cd "$FILES" || exit 1
+exec mc

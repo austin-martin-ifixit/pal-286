@@ -1,0 +1,26 @@
+# Programs PAL may open on the Compaq when someone asks out loud.
+# id|path under /opt/compaq/apps|what it is (Claude reads this)
+# Opening any of these closes whatever is open (as F10 does); main-menu just
+# goes back to the main menu.
+main-menu|-|go back to the Compaq's main menu, closing whatever program is open
+dustrun|40-games/05-dustrun|DUSTRUN, the office's own crystal-harvesting game
+doom|40-games/07-doom|DOOM (1993), running on the Pi and drawn in text on the Compaq
+adventures|40-games/10-adventures|text adventures: Zork I, II and III and others
+nethack|40-games/20-nethack|NetHack, the dungeon game
+chess|40-games/40-chess|GNU Chess
+more-games|40-games/60-more-games|more games: Tetris, Go, Greed, Sudoku, robotfindskitten, typespeed
+unix-games|40-games/50-unix-games|classic BSD games
+fixbot|10-fixbot|Ask FixBot, iFixit's repair assistant
+guides|15-guides|iFixit repair guides, a step at a time, each step's photos painted on the screen (P) and a QR code to carry on reading on a phone (L)
+board|17-board|the office message board
+weather|30-internet/40-weather|the weather forecast
+news|30-internet/30-news|text news sites
+feeds|30-internet/70-feeds|news feeds: iFixit, Hackaday, Hacker News and others
+wikipedia|30-internet/20-wikipedia|Wikipedia
+search|30-internet/05-search|web search, with results to read on the Compaq, see as dithered pictures of the real page (P1) or send to a phone as a QR code (L1)
+potatotube|30-internet/15-potatotube|PotatoTube: YouTube in the worst quality ever (text art, sound from the lobby speaker; its thumbnail as a real picture while it loads, and a QR code to watch it properly after)
+repair-queue|20-office/70-repair-queue|the repair job queue
+typing|20-office/80-typing-tutor|the typing tutor
+dictionary|20-office/60-dictionary|the dictionary
+calculator|20-office/40-calculator|the calculator
+calendar|20-office/30-calendar|the calendar

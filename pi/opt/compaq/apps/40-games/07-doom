@@ -1,0 +1,25 @@
+#!/bin/bash
+# title: DOOM (1993)
+# Doom's shareware first episode (Debian's doom-wad-shareware), run by the
+# Pi. With PILINK on the Compaq it's drawn in real dots, with keys that can
+# be held (lib/doomhd.py, and tools/doomgeneric_frames.c); otherwise in
+# text, by doom-ascii (GPL, github.com/wojciech-graj/doom-ascii). Doom needs
+# a 386, but the cable can't carry many pictures a second, so on the real
+# Compaq with PILINK 3 the 286 runs Doom8088 itself (lib/dos.py, which puts
+# it on the hard disk from the Doom floppies the first time).
+. /opt/compaq/lib/common.sh
+python3 -I /opt/compaq/lib/dos.py play doom
+[ $? -eq 3 ] || exit 0        # (3: this screen can't run DOS programs; the Pi's Doom, then)
+if [ ! -x /opt/compaq-net/bin/doom-ascii ] || [ ! -f /usr/share/games/doom/doom1.wad ]; then
+  echo; echo "  Doom isn't set up on this Pi yet (run fetch-net.sh on the Mac)."; pause; exit 0
+fi
+intro "DOOM (id Software, 1993)" \
+  "Real Doom, running on the Raspberry Pi, drawn on this screen: in real" \
+  "dots when the Compaq can take them, in text when it can't." \
+  "Arrows walk and turn, Space fires, E opens doors, comma and period strafe," \
+  "1 to 7 pick a weapon. It starts in the first level; Esc is Doom's own menu." \
+  "In dots, keys at the Compaq can be held. In text (and from a browser)" \
+  "they act as quick taps." || exit 0
+mkdir -p ~/compaq-files/saves/doom && cd ~/compaq-files/saves/doom || exit 1
+# (saved games stay here; doomhd.py runs the text version itself when it must)
+exec python3 -I /opt/compaq/lib/doomhd.py

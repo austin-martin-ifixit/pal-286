@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Talk to PAL (type)
+exec python3 /opt/compaq/lib/chat.py --backend pal

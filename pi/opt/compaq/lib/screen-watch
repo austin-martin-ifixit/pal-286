@@ -1,0 +1,137 @@
+#!/usr/bin/python3 -I
+"""Lets PAL know what's open on the shared screen, and see the screen itself
+while someone at the lobby keyboard is using a program (for spoken tips when
+they seem stuck, and for talking to text adventures).
+
+PAL runs this as the shared session's account (sudoers 021_compaq-pal), once,
+and reads it: one JSON line every 2 seconds. It always says what's showing
+(the welcome screen, the menu, or which program: its title, not what's on
+it). It says "active": false unless the lobby's own keyboard (the Compaq, or
+the TV standing in) was used in the last minute and a program is open; then
+it also gives the program's name and the last lines of its screen. Nothing
+typed from a browser is watched, and nothing is kept.
+"""
+
+import json
+import os
+import subprocess
+import time
+
+TMUX = ["tmux", "-L", "compaq"]
+
+
+def tmux(*args):
+    try:
+        return subprocess.run(TMUX + list(args), capture_output=True, text=True,
+                              timeout=5).stdout
+    except subprocess.TimeoutExpired:
+        return ""
+
+
+def parent_of(pid):
+    try:
+        with open(f"/proc/{pid}/stat") as f:
+            return int(f.read().rsplit(")", 1)[1].split()[1])
+    except (OSError, ValueError, IndexError):
+        return 0
+
+
+def command_line(pid):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            return f.read().replace(b"\0", b" ").decode(errors="replace")
+    except OSError:
+        return ""
+
+
+def lobby_idle():
+    """Seconds since the lobby's keyboard was last used: the tmux client the
+    serial bridge runs (for the Compaq, or for the TV)."""
+    now = time.time()
+    for line in tmux("list-clients", "-F", "#{client_pid} #{client_activity} #{client_created}").splitlines():
+        try:
+            pid, activity, created = (int(v) for v in line.split())
+        except ValueError:
+            continue
+        if "serial_bridge.py" in command_line(parent_of(pid)):
+            return now - activity if activity > created else 1e9
+    return 1e9
+
+
+def program(pane_pid):
+    """The program actually running in the pane: the newest process at the
+    end of the chain session -> menu -> program (the menu doesn't give its
+    programs their own process groups, so tmux only ever sees "bash")."""
+    children = {}
+    for entry in os.listdir("/proc"):
+        if entry.isdigit():
+            children.setdefault(parent_of(int(entry)), []).append(int(entry))
+    pid = pane_pid
+    while children.get(pid):
+        pid = max(children[pid])
+    try:
+        with open(f"/proc/{pid}/comm") as f:
+            name = f.read().strip()
+    except OSError:
+        return "unknown"
+    if name.startswith("python"):
+        # A Python program: its script's name ("dustrun"), not "python3".
+        for word in command_line(pid).split()[1:]:
+            if word.endswith(".py"):
+                return os.path.basename(word)[:-3]
+    return name
+
+
+def showing():
+    """What's on the shared screen, as the menu recorded it: "the welcome
+    screen", "the main menu", or a program's menu title (with its id in the
+    menu, like 40-games/05-dustrun)."""
+    where = tmux("display-message", "-p", "-t", "compaq", "#{@showing}").strip()
+    if where in ("", "welcome"):
+        return {"showing": "the welcome screen", "app": ""}
+    if where == "menu":
+        return {"showing": "the main menu", "app": ""}
+    title = ""
+    if all(part.replace("-", "").isalnum() for part in where.split("/")):
+        try:
+            with open(os.path.join("/opt/compaq/apps", where)) as f:
+                for line in f:
+                    if line.startswith("# title:"):
+                        title = line[8:].strip()
+                        break
+        except OSError:
+            pass
+    # (only a real menu program's own title is passed on: the session could
+    # set @showing to anything, and PAL reads this)
+    return {"showing": title or "a program", "app": where if title else ""}
+
+
+def state():
+    """Always what's showing (not what's on it); while the lobby's keyboard
+    is in use, also the program and the bottom of the screen."""
+    here = showing()
+    if lobby_idle() > 60:
+        return dict(here, active=False)
+    y = tmux("display-message", "-p", "-t", "compaq", "#{cursor_y}").strip()
+    line = tmux("capture-pane", "-p", "-t", "compaq", "-S", y, "-E", y).rstrip() if y.isdigit() else ""
+    if line.endswith(("Press Enter to start.", "then press Enter:")):
+        return dict(here, active=False)
+    pane = tmux("display-message", "-p", "-t", "compaq", "#{pane_pid}").strip()
+    text = tmux("capture-pane", "-p", "-J", "-S", "-40", "-t", "compaq")
+    return dict(here, active=True, program=program(int(pane)) if pane.isdigit() else "unknown",
+                text=text[-6000:])
+
+
+def main():
+    while True:
+        try:
+            print(json.dumps(state()), flush=True)
+        except BrokenPipeError:
+            return
+        except Exception:
+            print(json.dumps({"active": False}), flush=True)
+        time.sleep(2)
+
+
+if __name__ == "__main__":
+    main()

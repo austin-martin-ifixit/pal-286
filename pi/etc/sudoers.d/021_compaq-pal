@@ -1,0 +1,10 @@
+# PAL may open a listed program on the shared Compaq screen when asked out
+# loud (the helper checks the program and who's using the screen), type a
+# spoken command into a text adventure for the person playing it, and see
+# the screen while someone at the lobby keyboard uses a program, to offer a
+# tip when they're stuck. Nothing else.
+# (sudo would write each of these commands to the system log, words and
+# all: what someone said to a game, what they asked PAL to search for.
+# PAL's own log keeps to counts, and so does this.)
+Defaults:pal !log_allowed
+pal ALL=(desk) NOPASSWD: /opt/compaq/lib/voice-open, /opt/compaq/lib/voice-type, /opt/compaq/lib/screen-watch

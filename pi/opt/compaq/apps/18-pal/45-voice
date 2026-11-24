@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Change PAL's voice (an ogre, a movie trailer, a butler...)
+exec python3 /opt/compaq/pal/client.py voice

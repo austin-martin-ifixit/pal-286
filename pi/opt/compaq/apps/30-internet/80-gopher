@@ -1,0 +1,9 @@
+#!/bin/bash
+# title: Gopher and Gemini: the small, text-only web
+. /opt/compaq/lib/common.sh
+intro "Bombadillo: Gopher and Gemini" \
+  "Number keys 1-9 and 0 follow the first ten links; : then a number follows" \
+  "any link, or : then an address goes there. b goes back, j and k scroll," \
+  "q quits. Gopher (1991) is the text-only cousin of the web, still running." || exit 0
+# Bombadillo draws its title bar with a Unicode block; asciify swaps it out.
+exec python3 /opt/compaq/lib/asciify.py bombadillo gopher://gopher.floodgap.com

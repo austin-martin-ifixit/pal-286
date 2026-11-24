@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: How PAL works, and what it keeps
+exec python3 /opt/compaq/pal/client.py about

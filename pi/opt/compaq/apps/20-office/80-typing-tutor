@@ -1,0 +1,7 @@
+#!/bin/bash
+# title: Typing tutor (gtypist)
+. /opt/compaq/lib/common.sh
+intro "GNU Typist" \
+  "Up and Down pick a lesson, Enter starts it. Begin with Q1, and type" \
+  "exactly what it shows. Esc backs out of a lesson; Q at a menu leaves." || exit 0
+exec gtypist q.typ

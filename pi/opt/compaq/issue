@@ -1,0 +1,14 @@
+
+  ========================================================================
+    COMPAQ PORTABLE III                                 Raspberry Pi link
+  ========================================================================
+
+  Hello! This is a 1987 Compaq, brought back to life by a Raspberry Pi.
+  Play a game, read a repair guide, ask FixBot about a repair, or just
+  talk: say "Hey PAL" and PAL, the lobby computer, answers out loud.
+  In any program, F10 brings you back to the main menu.
+
+  This screen is shared: anyone at http://compaq.local on the office
+  network sees it too, and can type into it. PAL has a camera and a
+  microphone (menu: PAL 286, How PAL works).
+

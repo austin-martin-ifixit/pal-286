@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+"""floppy: a Raspberry Pi Zero W pretending to be the GoTEK's USB stick.
+
+The GoTEK in the Compaq's drive bay reads floppy disk images off a USB
+stick. Plugged into the GoTEK instead of a stick, the Zero is one (a "USB
+gadget": the Zero's inner USB socket can play the device rather than the
+computer). Behind it is a library of disk images, and the Compaq's Pi
+decides which one is in the drive, over Wi-Fi: no stick to carry.
+
+The "stick" is a 64 MB FAT32 file holding FlashFloppy's settings (FF.CFG)
+and one disk image, DISK.IMG: whichever is in the drive. Putting another
+disk in pulls the stick out (as far as the GoTEK can tell), swaps
+DISK.IMG, and plugs it back in; FlashFloppy then tells the Compaq the disk
+changed, as a real drive would. Whatever the Compaq wrote to the disk
+(a saved game, a document) goes back into the library first.
+
+Usage (the Compaq's Pi runs these over SSH, with a key that may run only
+this program; see zero/README.md):
+  floppy list               the disks in the library: name, size, in the drive?
+  floppy status             which disk is in the drive
+  floppy insert NAME        put that disk in the drive
+  floppy eject              take the disk out
+  floppy put NAME           add or replace a disk: its image on standard input
+  floppy get NAME           a disk's image on standard output
+  floppy remove NAME        delete a disk from the library
+  floppy plug | unplug      the "stick" in or out (gotek-gadget.service, as root)
+
+For testing anywhere: FLOPPY_HOME=/some/folder keeps everything there, and
+FLOPPY_GADGET=none leaves the USB side out.
+"""
+
+import fcntl
+import hashlib
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+HOME = os.environ.get("FLOPPY_HOME", "/var/lib/gotek")
+DISKS = os.path.join(HOME, "disks")            # the library: NAME.img
+STICK = os.path.join(HOME, "stick.img")        # what the GoTEK sees
+IN_DRIVE = os.path.join(HOME, "in-drive")      # the name of the disk in it ("" for none)
+NO_GADGET = os.environ.get("FLOPPY_GADGET") == "none"
+GADGET = "/sys/kernel/config/usb_gadget/gotek"
+INSIDE = "DISK.IMG"
+SETTINGS = "interface = ibmpc\n"               # FlashFloppy's FF.CFG: a PC-style drive (pins 2 and 34)
+SIZES = {368640: "360 KB", 737280: "720 KB", 1228800: "1.2 MB", 1474560: "1.44 MB"}
+NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+MTOOLS = dict(os.environ, MTOOLS_SKIP_CHECK="1", MTOOLS_NO_VFAT="1")
+
+
+class Refused(Exception):
+    """Something asked of floppy that it won't or can't do: the message says why."""
+
+
+def run(*command, data=None):
+    done = subprocess.run(command, input=data, capture_output=True, env=MTOOLS)
+    if done.returncode != 0:
+        raise Refused(f"{command[0]} failed: {done.stderr.decode(errors='replace').strip()[:200]}")
+    return done.stdout
+
+
+# ---------------------------------------------------------------- the USB side
+
+def write(path, text):
+    with open(path, "w") as f:
+        f.write(text)
+
+
+def plug():
+    """The stick in: the Zero shows up at the GoTEK's USB socket (as root)."""
+    if NO_GADGET:
+        return
+    if not os.path.exists(GADGET):
+        run("modprobe", "libcomposite")
+        os.makedirs(GADGET)
+        write(f"{GADGET}/idVendor", "0x1d6b")             # (the Linux Foundation's numbers for gadgets)
+        write(f"{GADGET}/idProduct", "0x0104")
+        os.makedirs(f"{GADGET}/strings/0x409")
+        write(f"{GADGET}/strings/0x409/manufacturer", "Compaq Portable III link")
+        write(f"{GADGET}/strings/0x409/product", "Floppy library")
+        write(f"{GADGET}/strings/0x409/serialnumber", "gotek0001")
+        os.makedirs(f"{GADGET}/configs/c.1/strings/0x409")
+        write(f"{GADGET}/configs/c.1/strings/0x409/configuration", "Floppy library")
+        write(f"{GADGET}/configs/c.1/MaxPower", "250")
+        function = f"{GADGET}/functions/mass_storage.usb0"
+        os.makedirs(function)
+        write(f"{function}/stall", "1")
+        write(f"{function}/lun.0/removable", "1")
+        write(f"{function}/lun.0/ro", "0")
+        os.symlink(function, f"{GADGET}/configs/c.1/mass_storage.usb0")
+    write(f"{GADGET}/functions/mass_storage.usb0/lun.0/file", STICK)
+    if not open(f"{GADGET}/UDC").read().strip():
+        controllers = os.listdir("/sys/class/udc")
+        if not controllers:
+            raise Refused("this Pi can't be a USB stick (no USB device controller: is dtoverlay=dwc2 set?)")
+        write(f"{GADGET}/UDC", controllers[0])
+
+
+def unplug():
+    """The stick out, as if pulled from the GoTEK (as root). Whatever the
+    GoTEK wrote is in the stick's file once this returns."""
+    if NO_GADGET or not os.path.exists(GADGET):
+        return
+    if open(f"{GADGET}/UDC").read().strip():
+        # A newline, not "": Python sends nothing for an empty write, and the
+        # stick would stay plugged in with only its contents gone.
+        write(f"{GADGET}/UDC", "\n")
+        time.sleep(0.5)
+    try:
+        write(f"{GADGET}/functions/mass_storage.usb0/lun.0/forced_eject", "1")
+    except OSError:
+        pass
+    os.sync()
+
+
+def as_root(what):
+    """plug or unplug, from the unprivileged account SSH runs this as."""
+    if NO_GADGET:
+        return
+    if os.geteuid() == 0:
+        (plug if what == "plug" else unplug)()
+    else:
+        done = subprocess.run(["sudo", "-n", os.path.abspath(sys.argv[0]), what], capture_output=True)
+        if done.returncode != 0:
+            raise Refused(f"couldn't {what} the stick: {done.stderr.decode(errors='replace').strip()[:200]}")
+
+
+# ---------------------------------------------------------------- the library
+
+def make_stick():
+    """A fresh, empty stick: FAT32 with FlashFloppy's settings on it."""
+    if os.path.exists(STICK):
+        return
+    os.makedirs(HOME, exist_ok=True)
+    with open(STICK + ".new", "wb") as f:
+        f.truncate(64 * 1024 * 1024)
+    run("mkfs.vfat" if shutil.which("mkfs.vfat") else "/usr/sbin/mkfs.vfat", "-F", "32", "-n", "GOTEK", STICK + ".new")
+    with tempfile.NamedTemporaryFile("w", suffix=".cfg") as settings:
+        settings.write(SETTINGS)
+        settings.flush()
+        run("mcopy", "-i", STICK + ".new", settings.name, "::FF.CFG")
+    os.replace(STICK + ".new", STICK)
+    if os.geteuid() == 0:                        # (made at boot, as root: it belongs to the library's owner)
+        owner = os.stat(HOME)
+        os.chown(STICK, owner.st_uid, owner.st_gid)
+
+
+def disk_path(name):
+    if not NAME.match(name or ""):
+        raise Refused("a disk's name is lower-case letters, digits and dashes (up to 40)")
+    return os.path.join(DISKS, name + ".img")
+
+
+def in_drive():
+    try:
+        with open(IN_DRIVE) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def set_in_drive(name):
+    write(IN_DRIVE + ".new", name + "\n")
+    os.replace(IN_DRIVE + ".new", IN_DRIVE)
+
+
+def save_back():
+    """What the Compaq wrote to the disk in the drive goes back into the
+    library (the stick must be out)."""
+    name = in_drive()
+    if not name or INSIDE not in run("mdir", "-b", "-i", STICK, "::").decode(errors="replace").upper():
+        return
+    with tempfile.TemporaryDirectory(dir=HOME) as work:
+        copy = os.path.join(work, INSIDE)
+        run("mcopy", "-n", "-i", STICK, "::" + INSIDE, copy)
+        path = disk_path(name)
+        if not os.path.exists(path) or digest(copy) != digest(path):
+            os.replace(copy, path)
+
+
+def digest(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def load(name):
+    """name's image into the stick as the disk in the drive (or nothing:
+    the drive empty). The stick must be out."""
+    if INSIDE in run("mdir", "-b", "-i", STICK, "::").decode(errors="replace").upper():
+        run("mdel", "-i", STICK, "::" + INSIDE)
+    if name:
+        run("mcopy", "-i", STICK, disk_path(name), "::" + INSIDE)
+    set_in_drive(name)
+
+
+def swap(name):
+    """Out with the disk in the drive (kept, with its changes), in with
+    name ("" for none)."""
+    make_stick()
+    as_root("unplug")
+    try:
+        save_back()
+        load(name)
+    finally:
+        as_root("plug")
+
+
+# ---------------------------------------------------------------- commands
+
+def listing():
+    here = in_drive()
+    names = sorted(f[:-4] for f in os.listdir(DISKS) if f.endswith(".img")) if os.path.isdir(DISKS) else []
+    return "".join(f"{n}\t{SIZES.get(os.path.getsize(disk_path(n)), '?')}\t{'in the drive' if n == here else ''}\n"
+                   for n in names)
+
+
+def main(words):
+    os.makedirs(DISKS, exist_ok=True)
+    command, args = (words[0] if words else ""), words[1:]
+    if command in ("plug", "unplug") and not args:
+        if command == "plug":
+            make_stick()
+        return as_root(command)
+    with open(os.path.join(HOME, "lock"), "w") as lock:           # (one change at a time)
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if command == "list" and not args:
+            sys.stdout.write(listing())
+        elif command == "status" and not args:
+            print(f"in the drive: {in_drive() or 'nothing'}")
+        elif command == "insert" and len(args) == 1:
+            if not os.path.exists(disk_path(args[0])):
+                raise Refused(f"there's no disk called {args[0]}")
+            swap(args[0])
+            print(f"in the drive: {args[0]}")
+        elif command == "eject" and not args:
+            swap("")
+            print("in the drive: nothing")
+        elif command == "put" and len(args) == 1:
+            path = disk_path(args[0])
+            data = sys.stdin.buffer.read(max(SIZES) + 1)
+            if len(data) not in SIZES:
+                raise Refused("that isn't a floppy image (360 KB, 720 KB, 1.2 MB or 1.44 MB)")
+            if args[0] == in_drive():
+                swap("")                                         # (the new one goes in fresh)
+                put_back = True
+            else:
+                put_back = False
+            with open(path + ".new", "wb") as f:
+                f.write(data)
+            os.replace(path + ".new", path)
+            if put_back:
+                swap(args[0])
+            print(f"saved {args[0]} ({SIZES[len(data)]})" + (", in the drive" if put_back else ""))
+        elif command == "get" and len(args) == 1:
+            path = disk_path(args[0])
+            if not os.path.exists(path):
+                raise Refused(f"there's no disk called {args[0]}")
+            if args[0] == in_drive():
+                swap(args[0])                                    # (as the Compaq left it)
+            with open(path, "rb") as f:
+                sys.stdout.buffer.write(f.read())
+        elif command == "remove" and len(args) == 1:
+            path = disk_path(args[0])
+            if args[0] == in_drive():
+                swap("")
+            if os.path.exists(path):
+                os.remove(path)
+            print(f"removed {args[0]}")
+        else:
+            raise Refused("floppy list | status | insert NAME | eject | put NAME | get NAME | remove NAME")
+
+
+if __name__ == "__main__":
+    # Over SSH the key may run only this program, and what was asked for
+    # arrives as SSH_ORIGINAL_COMMAND.
+    asked = os.environ.get("SSH_ORIGINAL_COMMAND")
+    words = shlex.split(asked) if asked is not None else sys.argv[1:]
+    if words and os.path.basename(words[0]) == "floppy":
+        words = words[1:]
+    try:
+        main(words)
+    except Refused as e:
+        print(f"floppy: {e}", file=sys.stderr)
+        sys.exit(1)

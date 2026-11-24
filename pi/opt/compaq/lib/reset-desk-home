@@ -1,0 +1,19 @@
+#!/bin/bash
+# Run as root before the shared session starts (compaq-desk.service): puts
+# back the shared account's shell start-up files and removes the places code
+# could be planted to run later (Python's per-user packages, SSH keys,
+# per-user services). Anyone with the office password can use the Linux
+# command line as this account, so after a password change this makes sure
+# nothing they left behind keeps running. Documents, saves and app settings
+# (compaq-files, .config/compaq and the like) are left alone.
+set -u
+home=/home/desk
+[ -d "$home" ] || exit 0
+for file in .bashrc .profile .bash_logout; do
+  [ -f "/etc/skel/$file" ] && install -o desk -g desk -m 644 "/etc/skel/$file" "$home/$file"
+done
+rm -rf "$home/.bash_profile" "$home/.bash_login" "$home/.pam_environment" "$home/.tmux.conf" \
+       "$home/.ssh" "$home/.local/bin" "$home/.config/systemd" "$home/.config/autostart" \
+       "$home/.inputrc" "$home/.pythonrc" "$home/.pythonstartup"
+rm -rf "$home"/.local/lib/python*
+exit 0

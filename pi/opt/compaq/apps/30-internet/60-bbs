@@ -1,0 +1,45 @@
+#!/bin/bash
+# title: Dial a BBS
+# Connects to bulletin board systems over the internet. The list lives in
+# /opt/compaq/data/bbs.list as "Name|host|port" lines.
+
+mapfile -t boards < <(grep -v '^#' /opt/compaq/data/bbs.list | grep '|')
+
+echo
+echo "  BULLETIN BOARD SYSTEMS"
+echo
+for i in "${!boards[@]}"; do
+  IFS='|' read -r name _ _ <<< "${boards[$i]}"
+  printf "     %d.  %s\n" $((i + 1)) "$name"
+done
+echo
+echo "     O.  Other (type an address)"
+echo "     0.  Back to the menu"
+echo
+read -r -p "  Type a number, then press Enter: " choice || exit 0
+
+host=
+case "$choice" in
+  [oO])
+    read -r -p "  Address (host or host:port): " addr || exit 0
+    host=${addr%%:*}
+    port=${addr#*:}
+    [ "$port" = "$addr" ] && port=23
+    ;;
+  *)
+    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#boards[@]}" ]; then
+      IFS='|' read -r _ host port <<< "${boards[$((10#$choice - 1))]}"
+    fi
+    ;;
+esac
+[ -n "$host" ] || exit 0
+
+echo
+echo "  Dialing $host port $port..."
+echo "  To hang up, log off the BBS (often G for Goodbye), or press F10 any"
+echo "  time to hang up and go back to the main menu."
+echo
+sleep 2
+telnet -8 "$host" "$port"
+echo
+read -r -p "  Disconnected. Press Enter to return to the menu. " _

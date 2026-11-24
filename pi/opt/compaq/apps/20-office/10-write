@@ -1,0 +1,11 @@
+#!/bin/bash
+# title: Word processor (WordGrinder)
+. /opt/compaq/lib/common.sh
+intro "WordGrinder word processor" \
+  "Esc opens the menus. Ctrl-S saves, Ctrl-Q exits." \
+  "Documents are kept in compaq-files/documents on the Pi. To open one on" \
+  "the Compaq, export it as plain text (Esc, F, E, T) and transfer it." \
+  "Esc, F, T, A turns on autosave." || exit 0
+mkdir -p "$FILES/documents" && cd "$FILES/documents" || exit 1
+# WordGrinder draws with Unicode; asciify turns that into VT100 graphics.
+exec python3 /opt/compaq/lib/asciify.py wordgrinder

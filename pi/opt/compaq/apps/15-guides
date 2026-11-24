@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: iFixit repair guides (search and read step by step)
+exec python3 /opt/compaq/lib/guides.py "$@"

@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Office message board (read and post notes)
+exec python3 /opt/compaq/lib/board.py

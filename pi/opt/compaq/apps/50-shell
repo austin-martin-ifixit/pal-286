@@ -1,0 +1,6 @@
+#!/bin/bash
+# title: Linux command line
+echo
+echo "  You're at the Pi's command line. Type exit to go back to the menu."
+echo
+exec bash -l

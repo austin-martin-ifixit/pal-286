@@ -1,0 +1,3 @@
+# The shared Compaq session's limited account may do exactly one admin
+# thing: the menu's "Shut down the Pi".
+desk ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff

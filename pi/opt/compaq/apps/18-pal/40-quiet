@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Quiet mode (PAL stops greeting and listening)
+exec python3 /opt/compaq/pal/client.py quiet

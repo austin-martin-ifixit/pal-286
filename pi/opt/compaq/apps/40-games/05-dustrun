@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: DUSTRUN (an original game: dig crystals, dodge the burrowers)
+exec python3 /opt/compaq/lib/dustrun.py

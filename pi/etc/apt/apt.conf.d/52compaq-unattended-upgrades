@@ -1,0 +1,10 @@
+// Compaq link: install updates automatically from Raspberry Pi OS's own
+// sources. Debian's default patterns don't match these 32-bit (Raspbian)
+// sources, so without this unattended-upgrades would do nothing.
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Raspbian,codename=${distro_codename},label=Raspbian";
+    "origin=Raspberry Pi Foundation,codename=${distro_codename},label=Raspberry Pi Foundation";
+};
+// Never reboot by itself: someone may be mid-game on the Compaq.
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";

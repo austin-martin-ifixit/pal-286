@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: PotatoTube (YouTube, in the worst quality ever offered)
+exec python3 /opt/compaq/lib/potato.py "$@"

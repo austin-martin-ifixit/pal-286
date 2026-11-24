@@ -1,0 +1,14 @@
+#!/bin/bash
+# title: Dictionary and computing jargon
+# Looks words up in a full English dictionary, the Free On-line Dictionary of
+# Computing and the Jargon File, all stored on the Pi (dictd).
+while true; do
+  echo
+  echo "  DICTIONARY        English, computing (FOLDOC) and hacker jargon"
+  echo
+  read -r -p "  Look up (Enter to go back): " word || exit 0
+  [ -n "$word" ] || exit 0
+  dict -- "$word" 2>&1 | python3 /opt/compaq/lib/plain.py |
+    less -P "  Space\\: next page   b\\: back a page   q\\: done"
+  clear
+done

@@ -1,0 +1,10 @@
+#!/bin/bash
+# title: News feeds: iFixit, Hackaday, Hacker News and more
+. /opt/compaq/lib/common.sh
+intro "News feeds (newsboat)" \
+  "Enter opens a feed or a story, q goes back a level, R reloads every feed." \
+  "In a story, o opens the full article in the web browser." \
+  "Fetching the feeds takes a few seconds when it starts." || exit 0
+mkdir -p ~/.local/share/newsboat
+exec newsboat -u /opt/compaq/data/feeds -C /opt/compaq/data/newsboat-config \
+  -c ~/.local/share/newsboat/cache.db -r

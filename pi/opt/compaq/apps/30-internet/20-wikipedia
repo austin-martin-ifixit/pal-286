@@ -1,0 +1,32 @@
+#!/bin/bash
+# title: Wikipedia
+. /opt/compaq/lib/common.sh
+. /opt/compaq/lib/browse.sh
+echo
+echo "  WIKIPEDIA"
+echo
+for line in "${LYNX_TIPS[@]}"; do echo "  $line"; done
+echo
+read -r -p "  Look up: " topic || exit 0
+[ -n "$topic" ] || exit 0
+# Straight to the best match's article text (no menus first); the search
+# page if nothing matches.
+title=$(python3 - "$topic" <<'EOF'
+import json, sys, urllib.parse, urllib.request
+query = urllib.parse.urlencode({"action": "query", "list": "search", "srlimit": 1,
+                                "format": "json", "srsearch": sys.argv[1]})
+try:
+    request = urllib.request.Request("https://en.wikipedia.org/w/api.php?" + query,
+                                     headers={"User-Agent": "CompaqPortableIII/1.0"})
+    with urllib.request.urlopen(request, timeout=15) as response:
+        hits = json.load(response)["query"]["search"]
+    print(hits[0]["title"] if hits else "")
+except Exception:
+    print("")
+EOF
+)
+if [ -n "$title" ]; then
+  browse "https://en.wikipedia.org/wiki/$(urlencode "${title// /_}")?useskin=apioutput"
+else
+  browse "https://en.m.wikipedia.org/wiki/Special:Search?go=Go&search=$(urlencode "$topic")"
+fi

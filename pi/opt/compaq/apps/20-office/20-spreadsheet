@@ -1,0 +1,9 @@
+#!/bin/bash
+# title: Spreadsheet (sc, in the spirit of VisiCalc)
+. /opt/compaq/lib/common.sh
+intro "sc spreadsheet" \
+  "Arrow keys move between cells. = enters a number or formula (like A0*2)," \
+  "\" enters text. P saves, G opens a saved sheet, q quits, ? shows help." \
+  "Spreadsheets are kept in compaq-files/spreadsheets on the Pi." || exit 0
+mkdir -p "$FILES/spreadsheets" && cd "$FILES/spreadsheets" || exit 1
+exec sc

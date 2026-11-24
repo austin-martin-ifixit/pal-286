@@ -1,0 +1,30 @@
+#!/bin/bash
+# Types a command into the text adventure on the shared Compaq screen when
+# the person playing it says one out loud ("open the mailbox"). PAL runs
+# this as the shared session's account (sudoers 021_compaq-pal). Only plain
+# words, only into a text adventure, and not while someone is typing from a
+# browser.
+# Usage: voice-type WORDS
+set -u
+. /opt/compaq/lib/voice-common.sh
+words=${1:-}
+if [[ ! "$words" =~ ^[a-z0-9\ ,.\'?!-]{1,60}$ ]]; then
+  echo "That isn't something I can type."
+  exit 2
+fi
+tm has-session -t compaq 2>/dev/null || { echo "The Compaq session isn't running."; exit 1; }
+case "$(program_now)" in
+  frotz|dfrotz|advent) ;;
+  *) echo "No text adventure is open."; exit 1 ;;
+esac
+if [ "$(remote_idle)" -lt 30 ]; then
+  echo "Someone is typing from a browser right now."
+  exit 1
+fi
+# (--: words that start with a dash are words, not options)
+if tm send-keys -t compaq -l -- "$words" && tm send-keys -t compaq Enter; then
+  echo "Typed."
+else
+  echo "Couldn't type it."
+  exit 1
+fi

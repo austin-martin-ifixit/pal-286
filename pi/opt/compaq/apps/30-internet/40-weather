@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Weather
+exec python3 /opt/compaq/lib/weather.py

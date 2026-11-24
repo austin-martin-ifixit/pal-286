@@ -1,0 +1,23 @@
+#!/bin/bash
+# title: Pi status (network, temperature, storage)
+
+wifi=$(nmcli -t -f active,ssid,signal dev wifi 2>/dev/null |
+  awk -F: '$1 == "yes" { print $2 " (" $3 "% signal)"; exit }')
+if ping -c 1 -W 3 1.1.1.1 >/dev/null 2>&1; then internet=online; else internet=offline; fi
+temp=$(awk '{ printf "%.0f C", $1 / 1000 }' /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+
+echo
+echo "  PI STATUS"
+echo
+printf "    %-14s %s\n" \
+  "Model"        "$(tr -d '\0' < /proc/device-tree/model)" \
+  "Name"         "$(hostname)" \
+  "Address"      "$(hostname -I | awk '{ print $1 }')" \
+  "Wi-Fi"        "${wifi:-not connected}" \
+  "Internet"     "$internet" \
+  "Temperature"  "${temp:-unknown}" \
+  "Running for"  "$(uptime -p | sed 's/^up //')" \
+  "Memory free"  "$(free -m | awk '/^Mem:/ { print $7 " MB of " $2 " MB" }')" \
+  "Storage free" "$(df -h / | awk 'NR == 2 { print $4 " of " $2 }')"
+echo
+read -r -p "  Press Enter to return to the menu. " _

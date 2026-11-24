@@ -1,0 +1,22 @@
+#!/bin/bash
+# title: Text adventures (Zork, Colossal Cave and more)
+# Games are listed in /opt/compaq/data/adventures.list. Infocom-style story
+# files live in /var/lib/compaq/games (fetched by fetch-games.sh) and run in
+# Frotz in plain-ASCII mode.
+. /opt/compaq/lib/common.sh
+echo
+echo "  TEXT ADVENTURES"
+game=$(choose /opt/compaq/data/adventures.list) || exit 0
+clear
+intro "Text adventure" \
+  "Type short commands in plain English and press Enter, for example:" \
+  "  LOOK   NORTH (or N)   GO UP   TAKE LAMP   OPEN DOOR   EXAMINE BOX (X BOX)" \
+  "Directions: N S E W NE NW SE SW UP DOWN.  I lists what you carry." \
+  "If it doesn't know a word, use simpler ones: a verb, then a thing." \
+  "SAVE keeps your place, RESTORE brings it back. QUIT ends the game." || exit 0
+mkdir -p "$FILES/saves" && cd "$FILES/saves" || exit 1
+case "$game" in
+  /*) exec "$game" ;;
+  # -x: X means EXAMINE (and other modern shortcuts); -Z 0: no story-file warnings.
+  *) exec frotz -p -x -Z 0 "/var/lib/compaq/games/$game" ;;
+esac

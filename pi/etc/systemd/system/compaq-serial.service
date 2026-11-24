@@ -1,0 +1,28 @@
+# Joins the Compaq's serial cable to the shared session. Started by
+# 99-compaq-serial.rules when the USB serial adapter appears; stops when
+# it's unplugged.
+[Unit]
+Description=Compaq serial cable bridge
+BindsTo=dev-compaq.device
+# After compaq-tv: when the adapter appears, the TV's stand-in bridge has
+# fully stopped before this one starts.
+After=dev-compaq.device compaq-desk.service compaq-tv.service
+# Declared here too: udev starts this unit in systemd's "fail" job mode,
+# which won't stop a running unit unless the starting unit's own Conflicts=
+# asks for it (the TV's Conflicts= alone left both running on one socket).
+Conflicts=compaq-tv.service
+Wants=compaq-desk.service
+
+[Service]
+User=desk
+Group=desk
+SupplementaryGroups=dialout
+# bridge.sock and status live in /run/compaq-serial (tmpfiles.d/compaq-serial.conf).
+Environment=HOME=/home/desk LANG=C LC_ALL=C PATH=/usr/local/bin:/usr/bin:/bin
+ExecStartPre=+/usr/bin/systemd-tmpfiles --create /etc/tmpfiles.d/compaq-serial.conf
+# (the cable's speed is in /opt/compaq/data/cable-speed)
+ExecStart=/usr/bin/python3 -I /opt/compaq/lib/serial_bridge.py /dev/compaq
+Restart=always
+RestartSec=2
+# Adapter unplugged: the TV (if there is one) takes over again.
+ExecStopPost=+/bin/sh -c '[ -e /dev/compaq ] || systemctl --no-block start compaq-tv.service' 

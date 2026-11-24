@@ -1,0 +1,7 @@
+#!/bin/bash
+# title: Ask FixBot (iFixit's repair assistant)
+# FixBot's own page, logged in (lib/fixbot_menu.py). With a device and a
+# question (voice-open fixbot-ask: PAL without the page's login), FixBot's
+# repair plans, already asked.
+[ $# -gt 0 ] && exec python3 /opt/compaq/lib/chat.py --backend fixbot "$@"
+exec python3 /opt/compaq/lib/fixbot_menu.py

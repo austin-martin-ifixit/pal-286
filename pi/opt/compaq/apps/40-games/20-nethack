@@ -1,0 +1,13 @@
+#!/bin/bash
+# title: NetHack (dungeon adventure)
+. /opt/compaq/lib/common.sh
+intro "NetHack" \
+  "Move with these keys:   y k u      Walk into a monster to fight it." \
+  "                        h . l      i shows what you carry, ? is help," \
+  "                        b j n      Esc cancels a question, S saves." \
+  "It asks your name first: use the same one to carry on a saved game." || exit 0
+# DECgraphics draws the dungeon walls with VT100 line graphics; the rest are
+# Debian's defaults (setting this replaces them). -u player asks each person
+# for a name, so everyone has their own character and save.
+NETHACKOPTIONS='DECgraphics,time,showexp,pickup_types:$,mention_walls,nomail' \
+  exec /usr/games/nethack -u player

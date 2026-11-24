@@ -1,0 +1,17 @@
+# Only PAL may talk to its speech engines (whisper-server on 127.0.0.1:8178,
+# and 8179 for other languages).
+# Without this, any account on the Pi, including the shared "desk" one,
+# could send it requests, such as asking it to load a different model file.
+# Nor may another account answer from those ports, should it get to one
+# before Whisper does (PAL also checks who is listening before it sends any
+# sound: senses.py's listener()).
+# Loaded and removed by compaq-pal.service.
+table inet compaq_pal
+delete table inet compaq_pal
+table inet compaq_pal {
+	chain output {
+		type filter hook output priority 0; policy accept;
+		ip daddr 127.0.0.1 tcp dport { 8178, 8179 } meta skuid != "pal" reject with tcp reset
+		ip saddr 127.0.0.1 tcp sport { 8178, 8179 } meta skuid != "pal" drop
+	}
+}

@@ -1,0 +1,46 @@
+#!/bin/bash
+# title: Repair job queue (who's fixing what)
+# A to-do list for the office's repairs, shared by everyone who uses the
+# Compaq, kept with Taskwarrior in compaq-files/repair-queue.
+. /opt/compaq/lib/common.sh
+export TASKRC=/opt/compaq/data/taskrc
+mkdir -p "$FILES/repair-queue"
+while true; do
+  clear
+  echo
+  echo "  REPAIR JOB QUEUE                     shared with everyone at the office"
+  echo
+  if [ "$(task status:pending count 2>/dev/null)" = 0 ]; then
+    echo "  No repair jobs yet. Press A to add one."
+  else
+    task list 2>&1 | sed 's/^/  /'
+  fi
+  echo
+  echo "  A: add a job    D: mark a job done    X: remove a job    Enter: back"
+  read -r -p "  Type a letter, then press Enter: " choice || exit 0
+  case "${choice,,}" in
+    a)
+      read -e -r -p "  What needs fixing? " what || exit 0
+      read -e -r -p "  Who's on it? (Enter to skip) " who || exit 0
+      # Plain printable text only: it's shown to everyone, every time.
+      what=$(printf '%s' "$what" | python3 /opt/compaq/lib/plain.py | tr -cd ' -~')
+      who=$(printf '%s' "$who" | python3 /opt/compaq/lib/plain.py | tr -cd ' -~')
+      [ -n "$what" ] || continue
+      task add -- "$what${who:+ ($who)}" 2>&1 | sed 's/^/  /'
+      ;;
+    d|x)
+      read -r -p "  Job number: " n || exit 0
+      # Only a plain number: anything else would be a Taskwarrior filter that
+      # could match many jobs at once.
+      if [[ ! "$n" =~ ^[0-9]+$ ]]; then
+        echo "  Type the job's number from the list."
+      elif [ "${choice,,}" = d ]; then
+        task "$n" done 2>&1 | sed 's/^/  /'
+      else
+        task "$n" delete 2>&1 | sed 's/^/  /'
+      fi
+      ;;
+    *) exit 0 ;;
+  esac
+  sleep 1
+done

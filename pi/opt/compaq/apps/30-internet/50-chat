@@ -1,0 +1,8 @@
+#!/bin/bash
+# title: Internet Relay Chat (irssi)
+. /opt/compaq/lib/common.sh
+intro "irssi chat" \
+  "Type /connect irc.libera.chat to go online, then /join #channel-name." \
+  "/part leaves a channel. Esc then a number switches between windows." \
+  "/quit exits." || exit 0
+exec irssi

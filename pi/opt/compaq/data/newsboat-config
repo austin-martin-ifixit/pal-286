@@ -1,0 +1,9 @@
+# newsboat settings for the Compaq: 78 columns, links open in Lynx.
+browser "lynx -cookies -nocolor -display_charset=us-ascii %u"
+text-width 78
+confirm-exit no
+reload-threads 3
+show-read-feeds yes
+# Item number, flags and title: the date column shows wrong dates on this
+# 32-bit Pi.
+articlelist-format "%4i %f  %t"

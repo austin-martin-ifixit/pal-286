@@ -1,0 +1,3 @@
+// Compaq link: refresh the package lists and run unattended-upgrades daily.
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";

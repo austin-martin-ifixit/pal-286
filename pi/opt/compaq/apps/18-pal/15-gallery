@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Photo booth gallery (portraits PAL took)
+exec python3 /opt/compaq/pal/client.py gallery

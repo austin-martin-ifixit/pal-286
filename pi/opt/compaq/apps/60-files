@@ -1,0 +1,99 @@
+#!/bin/bash
+# title: Transfer files with the Compaq
+# Moves files between the Pi's compaq-files folder and the Compaq with the
+# Kermit protocol. The serial bridge does the transfer on the cable itself
+# (transfer.py), pausing the Compaq's view of this shared screen meanwhile.
+# MS-DOS Kermit picks up files the Pi sends by itself; files going the other
+# way need a SEND typed at the Compaq's Kermit prompt. Or by floppy: with
+# the Pi Zero as the GoTEK's USB stick, the Pi puts whole disks in the
+# Compaq's drive (lib/floppies.py). That choice shows once the Pi has
+# reached the Zero (zero/setup-zero.sh does, and the Pi remembers its SSH
+# identity in gotek-known-hosts).
+
+dir=$HOME/compaq-files
+mkdir -p "$dir"
+cd "$dir" || exit 1
+
+echo
+echo "  FILE TRANSFER                        Pi folder: ~/compaq-files"
+echo
+echo "     1.  Send a file to the Compaq"
+echo "     2.  Receive files from the Compaq"
+floppy=
+[ -s /etc/compaq/gotek-known-hosts ] && floppy=yes
+[ -n "$floppy" ] && echo "     3.  The floppy drive: put a disk in, or make one from files here"
+echo "     0.  Back to the menu"
+echo
+read -r -p "  Type a number, then press Enter: " choice || exit 0
+
+case "$choice" in
+  3)
+    [ -n "$floppy" ] && exec python3 -I /opt/compaq/lib/floppies.py ;;
+  1)
+    # The documents, spreadsheets, saves and chats folders, newest first
+    # (not the repair queue's data files or hidden ones).
+    mapfile -t rows < <(find . -mindepth 1 -maxdepth 2 -type f ! -path '*/.*' \
+                          ! -path './repair-queue/*' -printf '%T@ %s %P\n' | sort -rn)
+    if [ ${#rows[@]} -eq 0 ]; then
+      echo
+      echo "  The folder is empty. Put files in ~/compaq-files on the Pi first."
+    else
+      start=0
+      while true; do
+        clear
+        echo
+        echo "  SEND A FILE TO THE COMPAQ          ($(( ${#rows[@]} )) files, newest first)"
+        echo
+        for ((i = start; i < start + 15 && i < ${#rows[@]}; i++)); do
+          read -r _ size name <<< "${rows[$i]}"
+          [ ${#name} -gt 50 ] && name="${name:0:47}..."
+          printf "     %2d.  %-50s %7s KB\n" $((i + 1)) "$name" $(( (size + 1023) / 1024 ))
+        done
+        echo
+        more=""
+        [ $((start + 15)) -lt ${#rows[@]} ] && more="N: more files   "
+        read -r -p "  File number (${more}Enter: back): " n || exit 0
+        if [ "${n,,}" = n ] && [ -n "$more" ]; then
+          start=$((start + 15))
+          continue
+        fi
+        break
+      done
+      if [[ "$n" =~ ^[0-9]+$ ]] && [ "$((10#$n))" -ge 1 ] && [ "$((10#$n))" -le "${#rows[@]}" ]; then
+        read -r _ _ name <<< "${rows[$((10#$n - 1))]}"
+        echo
+        echo "  Sending $name over the cable. The Compaq receives it"
+        echo "  by itself, and its screen pauses until the transfer is done."
+        echo
+        python3 /opt/compaq/lib/transfer.py send "$name"
+      fi
+    fi
+    ;;
+  2)
+    echo
+    if [ "$(cat /run/compaq-serial/terminal 2>/dev/null)" = pilink ]; then
+      # PILINK is the Compaq's terminal (PI.BAT): the Pi fetches the files.
+      echo "  Which files? A DOS name, from the folder PI was started in, or with"
+      echo "  its drive and folder. Wildcards work: *.TXT, C:\DOCS\*.*"
+      read -r -p "  Files (just Enter: back): " files || exit 0
+      [ -n "$files" ] || exit 0
+      echo
+      echo "  Fetching them. The Compaq's screen goes to Kermit meanwhile."
+      python3 /opt/compaq/lib/transfer.py receive "$dir" "$files"
+    else
+      echo "  Ready to receive. On the Compaq:"
+      echo "    1. Press Ctrl-] then C to reach the Kermit prompt."
+      echo "    2. Type SEND followed by the file name (wildcards like *.TXT work)."
+      echo "    3. When it finishes, type CONNECT to come back here."
+      echo
+      echo "  Waiting for the Compaq (up to 10 minutes)..."
+      python3 /opt/compaq/lib/transfer.py receive "$dir"
+    fi
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+echo
+read -r -p "  Press Enter to return to the menu. " _

@@ -1,0 +1,12 @@
+# Text adventures, one per line: Name|story file in /var/lib/compaq/games
+# (see fetch-games.sh), or a full path to a program. Friendliest first.
+Lost Pig (2007): funny and forgiving, the best first game|LostPig.z8
+The Dreamhold (2004): written for newcomers, with hints|dreamhold.z8
+9:05 (2000): ten minutes long; play it twice|905.z5
+Zork I: The Great Underground Empire (1980)|zork1.z3
+Zork II: The Wizard of Frobozz (1981)|zork2.z3
+Zork III: The Dungeon Master (1982)|zork3.z3
+Colossal Cave Adventure (1976): the very first one|Advent.z5
+Photopia (1998): a story more than a puzzle|photopia.z5
+Spider and Web (1998): a hard spy puzzle|Tangle.z5
+Curses (1993): huge and hard|curses.z5

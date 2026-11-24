@@ -1,0 +1,35 @@
+# PAL 286, the lobby greeter: webcam, microphone and speaker, with Claude for
+# a brain. Runs as its own "pal" account, the only one that can read the
+# Claude key and PAL's memory (faces and notes, in /var/lib/compaq-pal).
+[Unit]
+Description=PAL 286, the lobby greeter
+After=network.target sound.target
+# (never gives up restarting; see RestartSteps)
+StartLimitIntervalSec=0
+
+[Service]
+User=pal
+Group=pal
+SupplementaryGroups=desk video audio
+EnvironmentFile=-/etc/compaq/claude.env
+Environment=LANG=C.UTF-8 PYTHONUNBUFFERED=1
+# Only PAL may reach its speech engine (see whisper-guard.nft).
+ExecStartPre=+/usr/sbin/nft -f /opt/compaq/pal/whisper-guard.nft
+ExecStart=/usr/bin/python3 -I /opt/compaq/pal/pal.py
+ExecStopPost=-+/usr/sbin/nft delete table inet compaq_pal
+StateDirectory=compaq-pal
+StateDirectoryMode=0700
+# Holds pal.sock, for the Compaq menu (group desk).
+RuntimeDirectory=compaq-pal
+RuntimeDirectoryMode=0755
+ProtectSystem=full
+Nice=5
+Restart=always
+RestartSec=10
+# Something keeps failing (a missing part, say): wait longer between tries,
+# up to 5 minutes, instead of giving up.
+RestartSteps=5
+RestartMaxDelaySec=5min
+
+[Install]
+WantedBy=multi-user.target

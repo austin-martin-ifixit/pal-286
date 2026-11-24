@@ -1,0 +1,103 @@
+#!/bin/bash
+# Opens a program on the shared Compaq screen when someone asks PAL out loud,
+# switching from whatever is open (closing it, as F10 would), or goes back to
+# the main menu. PAL may run only this, as the shared session's "desk"
+# account (/etc/sudoers.d/021_compaq-pal), and only for the programs listed
+# in /opt/compaq/data/voice-apps.
+#
+# Whoever is talking to PAL in the lobby is almost certainly the one at the
+# lobby's keyboard (the Compaq, or the TV standing in), so their typing
+# doesn't hold PAL back. Someone typing from a browser can't hear the lobby,
+# though, so PAL leaves the screen alone while they're using it.
+# Usage: voice-open PROGRAM-ID | main-menu | guide ID | fixbot-ask DEVICE QUESTION
+#        | search WORDS | youtube WORDS | youtube-hd WORDS | floppy DISK
+set -u
+list=/opt/compaq/data/voice-apps
+. /opt/compaq/lib/voice-common.sh
+
+# What's on the screen now: "welcome", "menu", or the program's name (the
+# newest process at the end of session -> menu -> program: the menu doesn't
+# give programs their own process groups, so tmux only ever sees "bash").
+showing() {
+  local y line
+  y=$(tm display-message -p -t compaq '#{cursor_y}')
+  line=$(tm capture-pane -p -t compaq -S "$y" -E "$y")
+  case "$line" in
+    *"Press Enter to start.") echo welcome; return ;;
+    *"Type a number, then press Enter:") echo menu; return ;;
+  esac
+  program_now
+}
+
+id=${1:-}
+[[ "$id" =~ ^[a-z0-9-]+$ ]] || { echo "No such program."; exit 2; }
+if [ "$id" = floppy ]; then
+  # voice-open floppy DISK: a disk in the Compaq's drive (the GoTEK, whose
+  # USB stick is the Pi Zero; zero/README.md). The screen is left alone.
+  [[ "${2:-}" =~ ^[a-z0-9][a-z0-9-]{0,39}$ ]] || { echo "That isn't a disk's name."; exit 2; }
+  exec python3 -I /opt/compaq/lib/floppies.py insert "$2"
+fi
+args=()
+case "$id" in
+  guide)
+    # voice-open guide ID: one iFixit guide, straight away.
+    [[ "${2:-}" =~ ^[0-9]{1,9}$ ]] || { echo "That isn't a guide number."; exit 2; }
+    id=guides; args=("$2") ;;
+  fixbot-ask)
+    # voice-open fixbot-ask DEVICE QUESTION: FixBot, already asked.
+    plain='^[A-Za-z0-9 ,.()?!/+-]{1,100}$'
+    [[ "${2:-}" =~ $plain && "${3:-}" =~ ^[A-Za-z0-9\ ,.\'()?!/+-]{1,300}$ ]] ||
+      { echo "That device or question has characters I can't pass on."; exit 2; }
+    id=fixbot; args=(--device "$2" --ask "$3") ;;
+  search|youtube|youtube-hd)
+    # voice-open search WORDS: the results on screen; youtube WORDS: the top
+    # video in PotatoTube (youtube-hd: in HD, real dots).
+    hd=()
+    [ "$id" = youtube-hd ] && hd=(--hd)
+    [ "$id" != search ] && id=potatotube
+    if [ -n "${2:-}" ]; then
+      [[ "$2" =~ ^[A-Za-z0-9\ ,.\'?!\&:+-]{1,100}$ ]] || { echo "That search has characters I can't pass on."; exit 2; }
+      args=("${hd[@]}" "$2")
+    fi ;;
+esac
+if [ "$id" != main-menu ]; then
+  path=$(awk -F'|' -v id="$id" '$1 == id { print $2 }' "$list")
+  if [ -z "$path" ] || [ ! -x "/opt/compaq/apps/$path" ]; then
+    echo "No such program."
+    exit 2
+  fi
+fi
+
+tm has-session -t compaq 2>/dev/null || { echo "The Compaq session isn't running."; exit 1; }
+# Already showing? Then it stays as it is (opening it again would restart it).
+now=$(tm display-message -p -t compaq '#{@showing}')
+if [ "$id" != main-menu ] && [ ${#args[@]} -eq 0 ] && [ "$now" = "$path" ]; then
+  echo "It's already open on the Compaq's screen; nothing changed."
+  exit 0
+fi
+if [ "$(remote_idle)" -lt 30 ]; then
+  echo "Someone on the office network is using the Compaq from a browser right now, so I left it alone."
+  exit 1
+fi
+
+was=$(showing)
+if [ "$id" = main-menu ]; then
+  tm respawn-pane -k -t compaq "/opt/compaq/session menu"
+  did="went back to the main menu"
+else
+  # Straight into the program; the main menu follows when it ends.
+  tm respawn-pane -k -t compaq /opt/compaq/session open "$path" "${args[@]}"
+  did="opened it"
+fi
+case "$was" in
+  welcome|menu) echo "Done: $did on the Compaq's screen." ;;
+  *)
+    case "$was" in
+      frotz|advent|dfrotz) was="a text adventure" ;;
+      nethack) was="NetHack" ;;
+      moria) was="Moria" ;;
+      gnuchess) was="a chess game" ;;
+      *) was="the program that was open" ;;
+    esac
+    echo "Done: closed $was (anything unsaved in it is gone) and $did on the Compaq's screen." ;;
+esac

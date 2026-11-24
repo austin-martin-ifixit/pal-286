@@ -1,0 +1,13 @@
+#!/bin/bash
+# title: Classic Unix games (Star Trek, Wumpus, Hack and more)
+. /opt/compaq/lib/common.sh
+echo
+echo "  CLASSIC UNIX GAMES"
+picked=$(choose /opt/compaq/data/unix-games.list) || exit 0
+game=${picked%%|*}
+tip=${picked#*|}
+clear
+intro "$game" "$tip" || exit 0
+mkdir -p "$FILES/saves" && cd "$FILES/saves" || exit 1
+"/usr/games/$game"
+pause

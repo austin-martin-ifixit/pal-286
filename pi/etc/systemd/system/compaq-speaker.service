@@ -1,0 +1,16 @@
+# PAL's speaker, kept on (lib/keep-speaker-on): a Bluetooth one connected
+# after every restart and whenever it comes back on, or a quiet tone on the
+# headphone socket so a speaker on the aux cord never switches itself off.
+[Unit]
+Description=PAL's speaker, kept on
+After=bluetooth.service bluealsa.service sound.target
+Wants=bluetooth.service bluealsa.service
+
+[Service]
+ExecStart=/opt/compaq/lib/keep-speaker-on
+RuntimeDirectory=compaq-speaker
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

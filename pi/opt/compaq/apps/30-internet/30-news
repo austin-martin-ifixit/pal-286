@@ -1,0 +1,10 @@
+#!/bin/bash
+# title: News
+. /opt/compaq/lib/common.sh
+. /opt/compaq/lib/browse.sh
+echo
+echo "  NEWS"
+echo
+for line in "${LYNX_TIPS[@]}"; do echo "  $line"; done
+url=$(choose /opt/compaq/data/news.list) || exit 0
+browse "$url"

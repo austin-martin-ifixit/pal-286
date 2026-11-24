@@ -1,0 +1,67 @@
+#!/bin/bash
+# Keeps PAL's speaker on (compaq-speaker.service), however it's plugged in.
+# pal.conf's SPEAKER line decides, read again every 20 seconds:
+# - The Pi's headphone socket, the aux cord (SPEAKER=plughw:CARD=Headphones,DEV=0,
+#   or empty): cheap speakers switch themselves off after a quiet while, so
+#   this plays a tone the whole time, too low and quiet for a small speaker
+#   to make (30 Hz at -30 dB), and the speaker never thinks it's been left.
+#   The socket mixes up to 8 sounds at once, so PAL talks over it, and a
+#   steady stream also stops the click each time PAL starts and stops.
+#   SPEAKER_KEEP_AWAKE=no turns the tone off.
+# - A Bluetooth speaker (SPEAKER=bluealsa:DEV=AA:BB:CC:DD:EE:FF,PROFILE=a2dp):
+#   the Pi doesn't reconnect one by itself, after a restart or after the
+#   speaker was switched off and on, so this tries every 20 seconds while it
+#   isn't connected. (Pairing a new one, once: bluetoothctl with "agent
+#   NoInputNoOutput", "default-agent", "scan on", "pair MAC", "trust MAC";
+#   README.md.)
+set -u
+conf=/etc/compaq/pal.conf
+socket=plughw:CARD=Headphones,DEV=0
+wave=${RUNTIME_DIRECTORY:-/tmp}/keep-awake.raw
+said="" tone="" tones=0
+setting() { sed -n "s/^$1=//p" "$conf" 2>/dev/null | tail -1; }
+connected() { bluetoothctl info "$1" 2>/dev/null | grep -q "Connected: yes"; }
+tone_on() {
+  [ -n "$tone" ] && kill -0 "$tone" 2>/dev/null && return
+  # A minute of it, a whole number of waves so it loops without a click,
+  # played over and over: sox making it as it goes takes 5% of a core.
+  # (In its own process group, so tone_off stops the loop and aplay together.)
+  [ -s "$wave" ] || sox -q -n -r 8000 -b 16 -c 1 -t raw "$wave" synth 60 sine 30 gain -30
+  setsid bash -c 'while cat "$1"; do :; done | exec aplay -q -D "$0" -t raw -f S16_LE -r 8000 -c 1' \
+    "$socket" "$wave" &
+  tone=$!
+  tones=$((tones + 1))
+  # (said once, and again only if it keeps stopping: the socket gone, say)
+  case $tones in
+    1) echo "keeping the speaker awake: a 30 Hz tone at -30 dB on the headphone socket" ;;
+    2|10|100) echo "the keep-awake tone stopped; started it again ($tones times so far)" ;;
+  esac
+}
+tone_off() {
+  [ -n "$tone" ] && kill -- "-$tone" 2>/dev/null
+  tone="" tones=0
+}
+trap tone_off EXIT
+while true; do
+  speaker=$(setting SPEAKER)
+  if [[ "$speaker" == bluealsa:DEV=* ]]; then
+    tone_off
+    mac=$(sed -n 's/^bluealsa:DEV=\([0-9A-Fa-f:]\{17\}\).*/\1/p' <<<"$speaker")
+    if [ -n "$mac" ] && ! connected "$mac"; then
+      bluetoothctl power on >/dev/null 2>&1
+      # (bluetoothctl says it worked whether or not it did: ask again after)
+      timeout 25 bluetoothctl --timeout 20 connect "$mac" >/dev/null 2>&1
+      if connected "$mac"; then
+        echo "connected to $mac"; said=""
+      elif [ "$said" != "$mac" ]; then
+        echo "can't reach $mac (switched off? cheap speakers switch themselves off after a quiet while): trying every 20 seconds"
+        said=$mac
+      fi
+    fi
+  elif [[ -z "$speaker" || "$speaker" == *CARD=Headphones* ]] && [ "$(setting SPEAKER_KEEP_AWAKE)" != no ]; then
+    tone_on
+  else
+    tone_off
+  fi
+  sleep 20
+done

@@ -1,0 +1,11 @@
+#!/bin/bash
+# title: Calculator and unit converter (qalc)
+. /opt/compaq/lib/common.sh
+intro "qalc calculator" \
+  "Type a sum and press Enter:   12*(3+4)    sqrt(2)    80 * 15%" \
+  "It converts units too:        5 ft to m    3 cups to ml" \
+  "                              350 fahrenheit to celsius" \
+  "Type quit when you're done." || exit 0
+# Plain ASCII results ("oC" rather than a degree sign the Compaq can't show).
+# No first-run questions ("activate autocalc?", "update exchange rates?").
+exec qalc -set "unicode off" -set "autocalc off" -set "update exchange rates 7"

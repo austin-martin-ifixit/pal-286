@@ -1,0 +1,19 @@
+#!/bin/bash
+# title: Shut down the Pi (staff: before unplugging it)
+# One stray "y" from a visitor would leave the lobby dark until someone
+# unplugs the Pi and plugs it back in, so it takes a word, not a letter.
+echo
+echo "  This switches the whole lobby computer off: the Compaq's link, PAL,"
+echo "  everything. It only comes back when someone unplugs the Pi and plugs"
+echo "  it back in."
+echo
+read -r -p "  Type OFF and press Enter to shut down (just Enter: go back): " answer || exit 0
+case "$answer" in
+  [oO][fF][fF])
+    echo
+    echo "  Shutting down. Unplug the Pi once its green light stops blinking"
+    echo "  and stays off (about 20 seconds)."
+    sleep 1
+    sudo systemctl poweroff
+    ;;
+esac

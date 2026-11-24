@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: Jukebox (PAL plays 1980s chiptunes and sings)
+exec python3 /opt/compaq/pal/client.py jukebox

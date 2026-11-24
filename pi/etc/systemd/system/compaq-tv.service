@@ -1,0 +1,54 @@
+# The Compaq's screen on the Pi's HDMI display (lib/tv_terminal.py), with the
+# Pi's keyboard as the Compaq's, until the Compaq itself is connected:
+# plugging in its serial adapter starts compaq-serial.service, which stops
+# this one. Runs on console 7, so the login prompt stays on console 1
+# (Ctrl+Alt+F1 to reach it, Alt+F7 to come back).
+[Unit]
+Description=Compaq screen on the HDMI display
+After=compaq-desk.service systemd-user-sessions.service
+Wants=compaq-desk.service
+Conflicts=compaq-serial.service
+ConditionPathExists=/dev/fb0
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+User=desk
+Group=desk
+# The video group is for the display (/dev/fb0), but it would also open the
+# lobby webcam; only the devices it needs are allowed, whatever runs here.
+SupplementaryGroups=video
+DevicePolicy=closed
+DeviceAllow=/dev/fb0 rw
+DeviceAllow=/dev/tty7 rw
+# (for switching consoles back at the end: chvt, as root, needs the console
+# device; desk itself still can't open it)
+DeviceAllow=/dev/tty0 rw
+DeviceAllow=/dev/tty rw
+DeviceAllow=/dev/ptmx rw
+DeviceAllow=char-pts rw
+TTYPath=/dev/tty7
+StandardInput=tty-force
+StandardOutput=journal
+StandardError=journal
+TTYReset=yes
+TTYVHangup=yes
+# The same bridge as the cable, so the same runtime folder, /run/compaq-serial
+# (tmpfiles.d/compaq-serial.conf), which neither unit owns.
+Environment=HOME=/home/desk LANG=C LC_ALL=C PATH=/usr/local/bin:/usr/bin:/bin
+# With the Compaq's adapter plugged in, the cable's bridge runs instead. (At
+# boot, this unit's start, wanted by multi-user.target, cancels the bridge
+# udev asked for: Conflicts= acts when the jobs are queued, a Condition
+# only when this one runs. So it hands over rather than just skipping, a
+# moment later: started at once, the bridge's own Conflicts= kills this
+# unit mid-check and leaves it failed.)
+ExecCondition=+/bin/sh -c '[ ! -e /dev/compaq ] || { systemd-run --quiet --no-block --on-active=2 /bin/systemctl start compaq-serial.service; exit 1; }'
+ExecStartPre=+/usr/bin/systemd-tmpfiles --create /etc/tmpfiles.d/compaq-serial.conf
+ExecStartPre=+/usr/bin/chvt 7
+ExecStart=/usr/bin/python3 -I /opt/compaq/lib/tv_terminal.py
+ExecStopPost=-+/usr/bin/chvt 1
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

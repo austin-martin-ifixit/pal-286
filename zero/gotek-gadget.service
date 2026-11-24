@@ -1,0 +1,15 @@
+# The Pi Zero W as the GoTEK's USB stick: plugs the floppy library in at
+# start-up (zero/floppy). Installed by zero/setup-zero.sh.
+[Unit]
+Description=The GoTEK's USB stick (the floppy library)
+After=local-fs.target sys-kernel-config.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=FLOPPY_HOME=/var/lib/gotek
+ExecStart=/usr/local/bin/floppy plug
+ExecStop=/usr/local/bin/floppy unplug
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+# Taskwarrior settings for the shared repair job queue (Office menu).
+data.location=~/compaq-files/repair-queue
+confirmation=no
+color=off
+detection=off
+defaultwidth=78
+verbose=blank,label,new-id,affected
+# Taskwarrior's "Recently upgraded... run task news" note would show on every
+# list (this file is read-only, so "task news" can't silence it).
+news.version=2.6.0

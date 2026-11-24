@@ -1,0 +1,101 @@
+#!/bin/bash
+# The Compaq menu: lists the programs in a folder and runs the one picked.
+# Each program is an executable whose "# title:" line names it here. Each
+# subfolder is a submenu, named by the first line of its .title file
+# ("Section - description"). Entries are listed in file-name order, so a
+# number prefix (10-, 20-, ...) sets the position.
+# Usage: menu [folder]   (default: the main menu, /opt/compaq/apps)
+
+dir=${1:-/opt/compaq/apps}
+# TMOUT signs the menu off when idle; programs started from it shouldn't
+# inherit it (Midnight Commander's shell would log itself out mid-edit).
+export -n TMOUT
+IDLE=3   # exit status a submenu uses to say "timed out, sign off"
+
+title_of() {
+  if [ -d "$1" ]; then
+    head -n 1 "$1/.title" 2>/dev/null || basename "$1"
+  else
+    sed -n 's/^# title: *//p' "$1" | head -n 1
+  fi
+}
+
+# What's on the shared screen, for PAL (so it knows what's open): a
+# program's path under /opt/compaq/apps, or "menu".
+showing() { tmux set-option -p @showing "$1" 2>/dev/null; }
+
+# Ctrl-C stops the running program, not the menu.
+trap ':' INT
+
+while true; do
+  showing menu
+  entries=()
+  for f in "$dir"/*; do
+    if [ -d "$f" ] || { [ -f "$f" ] && [ -x "$f" ]; }; then
+      entries+=("$f")
+    fi
+  done
+
+  clear
+  echo
+  echo "  ========================================================================"
+  if [ -z "$1" ]; then
+    echo "    COMPAQ PORTABLE III                                 Raspberry Pi link"
+    echo "  ========================================================================"
+    watching=$(cat /run/compaq-web/viewers 2>/dev/null)
+    audience=""
+    case "$watching" in
+      ""|0) ;;
+      1) audience="1 watching at compaq.local" ;;
+      *) audience="$watching watching at compaq.local" ;;
+    esac
+    printf "    %-40s%30s\n" "$(date '+%A %-d %B %Y   %-I:%M %p')" "$audience"
+  else
+    section=$(title_of "$dir")
+    echo "    ${section%% - *}" | tr '[:lower:]' '[:upper:]'
+    echo "  ========================================================================"
+  fi
+  echo
+  for i in "${!entries[@]}"; do
+    title=$(title_of "${entries[$i]}")
+    printf "    %2d.  %s\n" $((i + 1)) "${title:-$(basename "${entries[$i]}")}"
+  done
+  echo
+  # (Any program: F10 or Ctrl-\ comes straight back here; see tmux.conf.)
+  if [ -z "$1" ]; then back="Sign off"; else back="Back"; fi
+  printf "     0.  %-23s%45s\n" "$back" "F10 in any program: main menu"
+  echo
+
+  # TMOUT (set for the shared session) makes this give up after 30 idle minutes.
+  read -r -p "  Type a number, then press Enter: " choice
+  status=$?
+  if [ $status -eq 130 ]; then
+    continue          # Ctrl-C at the prompt: just redraw
+  elif [ $status -gt 128 ]; then
+    echo
+    echo "  Signed off after 30 minutes without a keypress."
+    exit $IDLE        # idle: sign off, from submenus too
+  elif [ $status -ne 0 ]; then
+    exit 0            # the line dropped
+  fi
+
+  if [ "$choice" = 0 ]; then
+    exit 0
+  elif [[ "$choice" =~ ^@[0-9a-z-]+(/[0-9a-z-]+)?$ ]] && [ -f "/opt/compaq/apps/${choice#@}" ] &&
+       [ -x "/opt/compaq/apps/${choice#@}" ]; then
+    # "@section/program" opens any program directly: how PAL's voice-open does it.
+    clear
+    showing "${choice#@}"
+    "/opt/compaq/apps/${choice#@}"
+  elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#entries[@]}" ]; then
+    entry=${entries[$((10#$choice - 1))]}
+    if [ -d "$entry" ]; then
+      "$0" "$entry"
+      [ $? -eq $IDLE ] && exit $IDLE
+    else
+      clear
+      showing "${entry#/opt/compaq/apps/}"
+      "$entry"
+    fi
+  fi
+done

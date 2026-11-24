@@ -1,0 +1,3 @@
+#!/bin/bash
+# title: PAL status and speaker test
+exec python3 /opt/compaq/pal/client.py status

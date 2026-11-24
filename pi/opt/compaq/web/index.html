@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compaq Portable III</title>
+<link rel="stylesheet" href="vendor/xterm.css">
+<style>
+  @font-face {
+    font-family: "Compaq Port3";
+    src: url("vendor/Compaq_Port3.woff") format("woff");
+  }
+  /* One look on purpose: a dark desk with the Compaq's amber plasma panel. */
+  :root {
+    color-scheme: dark;
+    --scale: 1;
+    --plasma: #ff6a16;
+    --plasma-bright: #ffa25c;
+    --plasma-dim: #b9470c;
+    --plasma-bg: #130500;
+    --case: #3d3a37;
+    --room: #151210;
+    --ink: #cfc8bd;
+    --ink-dim: #8d857a;
+  }
+  * { box-sizing: border-box; }
+  /* The flex layouts below would otherwise override the hidden attribute. */
+  [hidden] { display: none !important; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: radial-gradient(ellipse at 50% 30%, #2a2521 0%, var(--room) 55%, #090807 100%);
+    background-color: var(--room);
+    color: var(--ink);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  main {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding-block: 24px;
+    padding-inline: 16px;
+  }
+  .machine {
+    max-width: 100%;
+    background: linear-gradient(180deg, #4b4845 0%, var(--case) 35%, #312e2c 100%);
+    border-radius: 16px;
+    padding: 22px 26px 14px;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, .65),
+                inset 0 1px 0 rgba(255, 255, 255, .13),
+                inset 0 -2px 0 rgba(0, 0, 0, .45);
+  }
+  .panel {
+    position: relative;
+    background: var(--plasma-bg);
+    padding: calc(10px * var(--scale)) calc(12px * var(--scale));
+    border-radius: 5px;
+    box-shadow: 0 0 0 5px #201e1c, 0 0 0 6px #121110,
+                inset 0 0 calc(30px * var(--scale)) rgba(0, 0, 0, .85);
+    cursor: text;
+  }
+  .panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 5px;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 45%, rgba(255, 106, 22, .07), transparent 70%);
+  }
+  .dots {
+    position: absolute;
+    inset: calc(10px * var(--scale)) calc(12px * var(--scale));
+    pointer-events: none;
+    display: none;
+    background-image:
+      linear-gradient(rgba(19, 5, 0, .5) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(19, 5, 0, .5) 1px, transparent 1px);
+    background-size: calc(1px * var(--scale)) calc(1px * var(--scale));
+  }
+  .panel.whole .dots { display: block; }
+  /* A picture the Compaq is showing instead of text (serial_bridge.py
+     paints it down the cable as dots; this is the same dots). */
+  .picture {
+    position: absolute;
+    top: calc(10px * var(--scale));
+    left: calc(12px * var(--scale));
+    width: calc(640px * var(--scale));
+    height: calc(384px * var(--scale));
+    background: var(--plasma-bg);
+  }
+  .picture img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 calc(3px * var(--scale)) rgba(255, 96, 12, .5));
+  }
+  .picture p {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    text-align: center;
+    white-space: pre;
+    color: var(--plasma);
+    text-shadow: 0 0 calc(4px * var(--scale)) rgba(255, 96, 12, .55);
+  }
+  .xterm .xterm-viewport { overflow: hidden; background: var(--plasma-bg) !important; }
+  .xterm .xterm-rows {
+    text-shadow: 0 0 1px rgba(255, 150, 70, .9),
+                 0 0 calc(4px * var(--scale)) rgba(255, 96, 12, .55),
+                 0 0 calc(10px * var(--scale)) rgba(255, 70, 0, .22);
+  }
+
+  /* Everything on the panel is drawn in the Compaq's own font. */
+  .plasma-text, .status, .screen-message, .login, .login input, .login button {
+    font-family: "Compaq Port3", monospace;
+    font-size: calc(16px * var(--scale));
+    line-height: 1;
+  }
+  .status {
+    height: 1em;
+    white-space: pre;
+    overflow: hidden;
+    color: var(--plasma-bg);
+    background: var(--plasma);
+    box-shadow: 0 0 calc(6px * var(--scale)) rgba(255, 96, 12, .45);
+  }
+  .screen-message, .login {
+    width: calc(640px * var(--scale));
+    height: calc(400px * var(--scale));
+    color: var(--plasma);
+    text-shadow: 0 0 calc(4px * var(--scale)) rgba(255, 96, 12, .55);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1em;
+    padding-inline: 2em;
+  }
+  .screen-message p, .login p { margin: 0; }
+  .login .title { color: var(--plasma-bright); }
+  .login label { display: block; margin-bottom: .5em; }
+  .login .row { display: flex; gap: 1em; flex-wrap: wrap; }
+  .login input {
+    flex: 1 1 12em;
+    min-width: 0;
+    color: var(--plasma-bright);
+    background: transparent;
+    border: 0;
+    border-bottom: calc(2px * var(--scale)) solid var(--plasma);
+    padding: .2em 0;
+    caret-color: var(--plasma);
+  }
+  .login input:focus { outline: none; border-bottom-color: var(--plasma-bright); }
+  .login button {
+    color: var(--plasma-bg);
+    background: var(--plasma);
+    border: 0;
+    padding: .2em .6em;
+    cursor: pointer;
+  }
+  .login button:focus-visible { outline: 2px solid var(--plasma-bright); outline-offset: 2px; }
+  .login .problem { color: var(--plasma-bright); min-height: 1em; }
+
+  .badge {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding: 0 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .2em;
+    color: #b9b2a7;
+  }
+  .badge .model { color: var(--ink-dim); }
+  .below {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    align-items: center;
+    justify-content: center;
+    max-width: 860px;
+  }
+  .help { margin: 0; color: var(--ink-dim); font-size: 13px; text-align: center; }
+  .plain {
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: #24201d;
+    border: 1px solid #4a4540;
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .plain:focus-visible { outline: 2px solid var(--plasma); outline-offset: 2px; }
+  /* Keys phones and tablets lack, for the programs that need them. */
+  .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    max-width: 100%;
+  }
+  .keys button {
+    font: 13px ui-monospace, Menlo, monospace;
+    min-width: 44px;
+    min-height: 36px;
+    color: var(--ink);
+    background: #24201d;
+    border: 1px solid #4a4540;
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .keys button:active { background: #4a3324; }
+  .keys button:focus-visible { outline: 2px solid var(--plasma); outline-offset: 2px; }
+  .credits { margin: 0; color: #6c655c; font-size: 11px; text-align: center; max-width: 860px; }
+  .credits a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <div class="machine">
+    <div class="panel" id="panel">
+      <div class="screen-message" id="message"><p>Connecting...</p></div>
+
+      <form class="login" id="login" hidden>
+        <p class="title">COMPAQ PORTABLE III</p>
+        <p>This is the real Compaq's screen, shared with the office.
+           Whatever you type shows up on the Compaq, and everyone sees it.</p>
+        <div>
+          <label for="password">Office password</label>
+          <div class="row">
+            <input id="password" type="password" autocomplete="current-password" required>
+            <button type="submit">Connect</button>
+          </div>
+        </div>
+        <p class="problem" id="problem" role="status"></p>
+      </form>
+
+      <div id="screen" hidden></div>
+      <div class="picture" id="picture" hidden>
+        <img id="picture-dots" alt="">
+        <p class="plasma-text" id="picture-caption"></p>
+      </div>
+      <div class="status" id="status" hidden></div>
+      <div class="dots"></div>
+    </div>
+    <div class="badge"><span>COMPAQ</span><span class="model">PORTABLE III</span></div>
+  </div>
+
+  <div class="keys" id="keys" role="group" aria-label="Extra keys" hidden></div>
+
+  <div class="below">
+    <p class="help" id="help">Everything you type goes to the real Compaq, and everyone connected sees the same screen.</p>
+    <button type="button" class="plain" id="signout" hidden>Sign out</button>
+  </div>
+  <p class="credits">
+    A hobby project, not affiliated with HP or Compaq. Font: Compaq Port3, from the Portable III's
+    BIOS, in VileR's <a href="https://int10h.org/oldschool-pc-fonts/">Ultimate Oldschool PC Font Pack</a>
+    (CC BY-SA 4.0). Terminal: <a href="https://xtermjs.org">xterm.js</a> (MIT).
+  </p>
+</main>
+
+<script>
+"use strict";
+
+// The terminal library is 300 KB, slow over the Pi Zero's Wi-Fi, so it loads
+// in the background while the sign-in form is already showing.
+const terminalReady = new Promise((resolve, reject) => {
+  const script = document.createElement("script");
+  script.src = "vendor/xterm.js";
+  script.onload = resolve;
+  script.onerror = reject;
+  document.head.append(script);
+});
+const fontReady = document.fonts.load('16px "Compaq Port3"').catch(() => {});
+
+const HEADERS = { "X-Compaq": "1" };   // the server requires it on every POST
+const BG = "#130500", DIM = "#b9470c", MID = "#ff6a16", HI = "#ffa25c";
+const THEME = {
+  background: BG, foreground: MID, cursor: MID, cursorAccent: BG,
+  selectionBackground: "rgba(255,106,22,.35)",
+  black: BG, red: DIM, green: MID, yellow: MID, blue: DIM, magenta: DIM, cyan: MID, white: MID,
+  brightBlack: DIM, brightRed: HI, brightGreen: HI, brightYellow: HI, brightBlue: HI,
+  brightMagenta: HI, brightCyan: HI, brightWhite: HI,
+};
+
+const $ = (id) => document.getElementById(id);
+const panel = $("panel");
+let scale = pickScale();
+let term = null;
+let viewer = null;            // { id, events }
+let info = { viewers: 1, compaq: "not connected" };
+let sending = Promise.resolve();
+
+function pickScale() {
+  // The plasma panel is 640x400; fit it to the window in quarter steps.
+  const fitWidth = (Math.min(innerWidth, document.documentElement.clientWidth) - 32 - 52) / 664;
+  const fit = Math.min(fitWidth, (innerHeight - 220) / 416);
+  return Math.max(0.4, Math.min(3, Math.floor(fit * 4) / 4));
+}
+
+function applyScale() {
+  document.documentElement.style.setProperty("--scale", scale);
+  panel.classList.toggle("whole", scale >= 2 && Number.isInteger(scale));
+  if (term) term.options.fontSize = 16 * scale;
+}
+
+function show(which) {
+  $("message").hidden = which !== "message";
+  $("login").hidden = which !== "login";
+  $("screen").hidden = which !== "screen";
+  $("status").hidden = which !== "screen";
+  $("signout").hidden = which !== "screen";
+  $("keys").hidden = which !== "screen";
+  if (which === "login") $("password").focus();
+  if (which === "screen" && term) term.focus();
+  drawPicture();
+}
+
+function message(text) {
+  $("message").replaceChildren(...text.split("\n").map((line) => {
+    const p = document.createElement("p");
+    p.textContent = line;
+    return p;
+  }));
+  show("message");
+}
+
+function drawStatus() {
+  const people = info.viewers === 1 ? "1 person here" : `${info.viewers} people here`;
+  const compaq = info.compaq === "connected" ? "Compaq: on the cable"
+    : info.compaq === "tv" ? "Compaq: TV standing in"
+    : info.compaq === "transferring" ? "Compaq: file transfer"
+    : "Compaq: not plugged in";
+  const left = " LIVE  The Compaq's screen";
+  const right = `${people}   ${compaq} `;
+  $("status").textContent = (left + right.padStart(80 - left.length)).slice(0, 80);
+}
+
+function drawPicture() {
+  // A picture on the Compaq (a repair photo, a web page, a QR code): the
+  // same dots here, until a key (here or there) takes it down.
+  const picture = $("screen").hidden ? null : info.picture;
+  $("picture").hidden = !picture;
+  if (!picture) return;
+  const src = `/api/picture/${picture.id}`;
+  if ($("picture-dots").getAttribute("src") !== src) $("picture-dots").src = src;
+  $("picture-dots").alt = picture.caption || "A picture on the Compaq's screen";
+  const caption = picture.caption ? `${picture.caption}  (a key goes on)` : "(a key goes on)";
+  $("picture-caption").textContent = caption.length <= 80 ? caption : picture.caption;
+}
+
+async function start() {
+  try {
+    const state = await (await fetch("/api/state")).json();
+    if (!state.setUp) {
+      return message("The office password hasn't been set yet.\n\n" +
+                     "Whoever looks after the Compaq can set it with\nset-office-password.sh on their Mac.");
+    }
+    if (!state.signedIn) return show("login");
+    openScreen();
+  } catch {
+    message("Can't reach the Pi.\n\nIs it switched on and on the office Wi-Fi?");
+    setTimeout(start, 5000);
+  }
+}
+
+$("login").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("problem").textContent = "";
+  try {
+    const response = await fetch("/api/login", {
+      method: "POST", headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ password: $("password").value }),
+    });
+    const result = await response.json();
+    if (!result.ok) {
+      $("problem").textContent = result.message || "That didn't work. Try again.";
+      return;
+    }
+    $("password").value = "";
+    openScreen();
+  } catch {
+    $("problem").textContent = "Can't reach the Pi. Try again in a moment.";
+  }
+});
+
+function makeTerminal() {
+  term = new Terminal({
+    cols: 80, rows: 24, scrollback: 0,
+    fontFamily: '"Compaq Port3", monospace', fontSize: 16 * scale,
+    lineHeight: 1, letterSpacing: 0, fontWeight: "normal", fontWeightBold: "normal",
+    drawBoldTextInBrightColors: true, customGlyphs: false,
+    cursorStyle: "underline", cursorBlink: true, theme: THEME,
+  });
+  term.open($("screen"));
+  term.onData((data) => send(data));
+}
+
+async function openScreen() {
+  if (!term) {
+    message("Connecting to the Compaq...");
+    try {
+      await Promise.all([terminalReady, fontReady]);
+    } catch {
+      return message("The page didn't finish loading. Reload to try again.");
+    }
+    makeTerminal();
+  }
+  closeViewer();
+  term.reset();
+  show("screen");
+  drawStatus();
+  try {
+    const response = await fetch("/api/viewer", { method: "POST", headers: HEADERS });
+    if (response.status === 401) return show("login");
+    if (response.status === 429) {
+      return message("Lots of people are watching right now.\n\nTry again in a few minutes.");
+    }
+    const { id } = await response.json();
+    const events = new EventSource(`/api/stream/${id}`);
+    viewer = { id, events };
+    events.onmessage = (e) => term.write(Uint8Array.from(atob(e.data), (c) => c.charCodeAt(0)));
+    events.addEventListener("info", (e) => { info = JSON.parse(e.data); drawStatus(); drawPicture(); });
+    events.addEventListener("end", () => reconnect());
+    events.onerror = () => { if (viewer && viewer.events === events) reconnect(); };
+  } catch {
+    reconnect();
+  }
+}
+
+function reconnect() {
+  closeViewer();
+  term.write("\r\n  [Reconnecting to the Compaq...]\r\n");
+  setTimeout(start, 2000);
+}
+
+function closeViewer() {
+  if (!viewer) return;
+  viewer.events.close();
+  fetch(`/api/close/${viewer.id}`, { method: "POST", headers: HEADERS, keepalive: true }).catch(() => {});
+  viewer = null;
+}
+
+function send(text) {
+  if (!viewer || !text) return;
+  const id = viewer.id;
+  // The Compaq's keyboard is plain ASCII.
+  const ascii = Array.from(text).filter((ch) => ch < "\x80").join("");
+  if (!ascii) return;
+  sending = sending.then(() => fetch(`/api/input/${id}`, { method: "POST", headers: HEADERS, body: ascii }))
+                   .catch(() => {});
+}
+
+// Keys a phone or tablet keyboard doesn't have. Arrows send the VT100
+// sequences the programs expect; tmux passes them on.
+const EXTRA_KEYS = [
+  ["Main menu", "\x1c"],   // Ctrl-\: back to the main menu from any program (tmux.conf)
+  ["Esc", "\x1b"], ["Tab", "\t"], ["Ctrl-C", "\x03"],
+  ["\u2190", "\x1b[D"], ["\u2191", "\x1b[A"], ["\u2193", "\x1b[B"], ["\u2192", "\x1b[C"],
+  ["Space", " "], ["Enter", "\r"],
+];
+const LABELS = { "\u2190": "Left arrow", "\u2191": "Up arrow", "\u2193": "Down arrow", "\u2192": "Right arrow" };
+for (const [label, keys] of EXTRA_KEYS) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  if (LABELS[label]) button.setAttribute("aria-label", LABELS[label]);
+  // Keep the on-screen keyboard from popping up on every tap.
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  button.addEventListener("click", () => send(keys));
+  $("keys").append(button);
+}
+
+$("signout").addEventListener("click", async () => {
+  closeViewer();
+  await fetch("/api/logout", { method: "POST", headers: HEADERS }).catch(() => {});
+  show("login");
+});
+panel.addEventListener("click", () => { if (!$("screen").hidden && term) term.focus(); });
+addEventListener("beforeunload", closeViewer);
+
+let resizeTimer;
+addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const next = pickScale();
+    if (next !== scale) { scale = next; applyScale(); }
+  }, 150);
+});
+
+applyScale();
+start();
+</script>
+</body>
+</html>

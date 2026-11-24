@@ -1,0 +1,5 @@
+# Encrypted Pi backups and built floppy images stay out.
+backups/
+disks/
+__pycache__/
+.DS_Store

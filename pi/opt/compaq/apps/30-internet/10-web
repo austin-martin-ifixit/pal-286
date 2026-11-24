@@ -1,0 +1,7 @@
+#!/bin/bash
+# title: Web browser (Lynx)
+. /opt/compaq/lib/common.sh
+. /opt/compaq/lib/browse.sh
+intro "Lynx web browser" "${LYNX_TIPS[@]}" \
+  "Text-only sites work best; the start page lists some good ones." || exit 0
+browse file:///opt/compaq/data/start.html

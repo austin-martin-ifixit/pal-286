@@ -1,0 +1,27 @@
+# The shared Compaq session: one 80x24 tmux screen running the Compaq menu.
+# The Compaq's cable (compaq-serial.service) and every web browser
+# (compaq-web.service) attach to it. Runs as the limited "desk" account.
+[Unit]
+Description=Shared Compaq session (shown on the Compaq and on the web)
+After=network.target
+
+[Service]
+Type=forking
+User=desk
+Group=desk
+WorkingDirectory=/home/desk
+# Plain ASCII for the Compaq's screen; /usr/games for the games; sign off
+# after 30 idle minutes at a prompt.
+Environment=HOME=/home/desk LANG=C LC_ALL=C COMPAQ_MENU=1 TMOUT=1800
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+# Fresh shell start-up files each time (see the script).
+ExecStartPre=+/opt/compaq/lib/reset-desk-home
+ExecStart=/usr/bin/tmux -L compaq -f /opt/compaq/tmux.conf new-session -d -s compaq -x 80 -y 24 /opt/compaq/session
+# Keeps the screen 80x24 whatever size each browser is (see tmux.conf).
+ExecStartPost=/usr/bin/tmux -L compaq set -g window-size manual
+ExecStop=/usr/bin/tmux -L compaq kill-server
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

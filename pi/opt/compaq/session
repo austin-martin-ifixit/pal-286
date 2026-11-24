@@ -1,0 +1,66 @@
+#!/bin/bash
+# The shared Compaq session: a welcome screen, then the menu, round and round.
+# Runs inside tmux (compaq-desk.service) as the limited "desk" account; the
+# Compaq and every web browser watch it and can type into it.
+
+# The menu signs off after TMOUT idle seconds, but the welcome screen waits
+# forever: if it timed out it would open the menu by itself, changing the
+# screen and waking the Compaq's burn-in screen saver every half hour.
+# The same surroundings however this screen was started: by the service, by
+# F10, or by PAL's voice-open (whose sudo would otherwise hand down its own
+# short PATH, without /usr/games, where the games live).
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+export HOME=/home/desk LANG=C LC_ALL=C COMPAQ_MENU=1
+# The menu programs' own prompts ignore any key bindings left in the shared
+# account's home (a ~/.inputrc could remap what every later visitor types).
+export INPUTRC=/dev/null
+# Programs that page text through "less" (game instructions, say) show what
+# the keys do instead of a bare ":".
+export LESS='-PsSpace\: next page   b\: back   q\: done$'
+unset SUDO_USER SUDO_UID SUDO_GID SUDO_COMMAND SUDO_HOME
+
+menu_timeout=${TMOUT:-1800}
+unset TMOUT
+
+# Ctrl-S would pause the screen for everyone (old-style flow control) until
+# someone thought of Ctrl-Q: off. Programs that want Ctrl-S still get it.
+stty -ixon 2>/dev/null
+
+# Ctrl-C just redraws the welcome screen.
+trap ':' INT
+
+# What's on the shared screen, for PAL (see the menu): "welcome", or a
+# program's path under /opt/compaq/apps.
+showing() { tmux set-option -p @showing "$1" 2>/dev/null; }
+
+# "session menu" (F10 or Ctrl-\ anywhere; see tmux.conf) starts at the main
+# menu instead of the welcome screen; "session open SECTION/PROGRAM" (PAL's
+# voice-open) starts in that program, then the main menu.
+case "${1:-}" in
+  menu)
+    TMOUT=$menu_timeout /opt/compaq/menu ;;
+  open)
+    if [[ "${2:-}" =~ ^[0-9a-z-]+(/[0-9a-z-]+)?$ ]] && [ -f "/opt/compaq/apps/$2" ] &&
+       [ -x "/opt/compaq/apps/$2" ]; then
+      clear
+      showing "$2"
+      "/opt/compaq/apps/$2" "${@:3}"
+    fi
+    TMOUT=$menu_timeout /opt/compaq/menu ;;
+esac
+
+while true; do
+  showing welcome
+  clear
+  cat /opt/compaq/issue
+  # A computing fortune (or a BOFH excuse), in plain ASCII, to start the day
+  # (its lines rejoined and wrapped to the screen).
+  fortune -s computers bofh-excuses 2>/dev/null | python3 /opt/compaq/lib/plain.py |
+    expand | fmt -w 74 | sed 's/^/  /'
+  echo
+  read -r -p "  Press Enter to start. " _
+  case $? in
+    0) TMOUT=$menu_timeout /opt/compaq/menu ;;
+    1) sleep 1 ;;   # no input at all (shouldn't happen in tmux): don't spin
+  esac
+done

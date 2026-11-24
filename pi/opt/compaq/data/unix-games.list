@@ -1,0 +1,22 @@
+# Games from the bsdgames collection: Name|program in /usr/games|tip shown first
+Star Trek (1973)|trek|At any question, ? lists the choices. Ctrl-C quits.
+Hunt the Wumpus (1973)|wump|Answer its questions; it explains the caves first. Ctrl-C quits.
+Hack (1985, NetHack's ancestor)|hack|h j k l move, ? is help, S saves and quits.
+Air Traffic Controller|atc|Letters pick a plane, then type its orders; ? is help. Ctrl-C quits.
+Robots|robots|Move with h j k l y u b n; t teleports. Ctrl-C quits.
+Worm|worm|h j k l steer the worm to the numbers. Ctrl-C quits.
+Snake|snake|h j k l move; reach the $ and escape the snake. Ctrl-C quits.
+Tetris|tetris-bsd|j and l move, k turns, Space drops. q quits.
+Gomoku (five in a row)|gomoku|Type a square like K10 to place a stone. Ctrl-C quits.
+Canfield (solitaire)|canfield|? lists the commands. q quits.
+Hangman|hangman|Type a letter to guess. Ctrl-C quits.
+Boggle|boggle|Type the words you find; Ctrl-C quits.
+Backgammon|backgammon|Follow its questions; it explains the moves. Ctrl-C quits.
+Cribbage|cribbage|Follow its questions. Ctrl-C quits.
+Go Fish|go-fish|Ask for a card by name. Ctrl-C quits.
+Mille Bornes|mille|? is help. Ctrl-C quits.
+Monopoly (2+ players)|monop|For two or more people taking turns. Ctrl-C quits.
+Battlestar (text adventure)|battlestar|Type short commands like look or north. quit ends it.
+Phantasia (fantasy role-playing)|phantasia|Follow its questions. Ctrl-C quits.
+Sail (sea battles of the 1800s)|sail|? is help once you're at sea. Ctrl-C quits.
+WarGames|wargames|Shall we play a game? Ctrl-C quits.

@@ -1,0 +1,10 @@
+# More games: Name|command (on the session's PATH)|tip shown first
+Tetris, the mean version (bastet)|bastet|Arrows move and turn, Space drops. Pick Quit in its menu to leave.
+2048|2048|Arrows slide the tiles; equal numbers merge. q quits.
+Minesweeper (freesweep)|freesweep|Arrows move, Space digs, f flags a mine. q quits.
+Moon Buggy|moon-buggy|Space jumps the craters, a fires. q quits.
+Go against the computer (GNU Go, 9x9 board)|gnugo --boardsize 9|Type a point like D4 to play there; pass, undo, quit.
+Greed|greed|Arrows eat numbers in a line; ? is help, q quits.
+Sudoku|nudoku -c|Arrows move, numbers fill in, H gives a hint, Q quits.
+robotfindskitten|robotfindskitten|Arrows touch things until you find kitten. q quits.
+Typing race (typespeed)|typespeed|Press 1, then type each word before it crosses the screen. 7 quits.

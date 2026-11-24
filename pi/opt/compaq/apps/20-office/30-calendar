@@ -1,0 +1,8 @@
+#!/bin/bash
+# title: Calendar and to-do list (calcurse)
+. /opt/compaq/lib/common.sh
+intro "calcurse calendar" \
+  "Tab moves between the appointments, calendar and to-do panels." \
+  "a adds an item, e edits it, d deletes it, arrows move around the calendar." \
+  "? shows help, q quits. Everything is saved automatically." || exit 0
+exec calcurse
